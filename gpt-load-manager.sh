@@ -52,8 +52,8 @@ config_env_menu() {
         echo -e "\n${BLUE}--- 配置环境 ---${NC}"
         echo -e "  ${BOLD}[1]${NC} 检查/安装根证书"
         echo -e "  ${BOLD}[2]${NC} 更新系统软件包 (pkg update && upgrade)"
-        echo -e "  ${BOLD}[3]${NC} 返回主菜单"
-        read -p "请选择 [1-3]: " env_choice < /dev/tty
+        echo -e "  ${BOLD}[0]${NC} 返回主菜单"
+        read -p "请选择 [0-2]: " env_choice < /dev/tty
         case $env_choice in
             1) check_cert ;;
             2)
@@ -64,7 +64,7 @@ config_env_menu() {
                     echo -e "${YELLOW}已取消更新。${NC}"
                 fi
                 ;;
-            3) break ;;
+            0) break ;;
             *) echo -e "${RED}无效选择${NC}" ;;
         esac
     done
