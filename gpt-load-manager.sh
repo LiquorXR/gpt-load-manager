@@ -26,6 +26,8 @@ setup_colors() {
 WORK_DIR="gpt-load"
 BINARY_NAME="gpt-load-linux-arm64"
 BINARY_PATH="${WORK_DIR}/${BINARY_NAME}"
+# GitHub 镜像加速配置
+GITHUB_PROXY="https://ghproxy.com/"
 REPO_API="https://api.github.com/repos/tbphp/gpt-load/releases/latest"
 ENV_REPO_API="https://api.github.com/repos/LiquorXR/gpt-load-manager/contents/.env.example"
 CERT_PATH="$PREFIX/etc/tls/cert.pem"
@@ -101,7 +103,7 @@ do_update_version() {
     fi
 
     echo -e "${BLUE}正在下载: $LATEST_URL${NC}"
-    curl -L -o "${BINARY_PATH}" "$LATEST_URL"
+    curl -L -o "${BINARY_PATH}" "${GITHUB_PROXY}${LATEST_URL}"
     
     if [ $? -eq 0 ]; then
         chmod +x "${BINARY_PATH}"
@@ -140,7 +142,7 @@ check_env_file() {
             return 1
         fi
 
-        curl -s "$ENV_DOWNLOAD_URL" -o "$WORK_DIR/.env"
+        curl -s "${GITHUB_PROXY}${ENV_DOWNLOAD_URL}" -o "$WORK_DIR/.env"
         
         if [ $? -eq 0 ] && [ -f "$WORK_DIR/.env" ]; then
             echo -e "${GREEN}.env 配置文件已下载成功！${NC}"
@@ -198,7 +200,7 @@ show_main_menu() {
     echo -e "${GREEN}  ╚██████╔╝██║        ██║         ███████╗╚██████╔╝██║  ██║██████╔╝${NC}"
     echo -e "${GREEN}   ╚═════╝ ╚═╝        ╚═╝         ╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚═════╝ ${NC}"
     echo -e "${BLUE}=========================================================${NC}"
-    echo -e "           ${BOLD}gpt-load Manager for Termux v0.16${NC}"
+    echo -e "           ${BOLD}gpt-load Manager for Termux v2.16${NC}"
     echo -e "${BLUE}=========================================================${NC}"
     echo -e "  ${BOLD}[1]${NC} ${GREEN}启动服务${NC}  --- 启动 gpt-load 代理服务"
     echo -e "  ${BOLD}[2]${NC} ${BLUE}配置环境${NC}  --- 检查证书和系统更新"
