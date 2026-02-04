@@ -1,0 +1,5 @@
+# 排除data文件夹
+data/
+
+# 排除.env文件
+.env
