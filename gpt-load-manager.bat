@@ -2,7 +2,7 @@
 setlocal enabledelayedexpansion
 
 :: ==============================================================================
-:: gpt-load - Windows Management Script
+:: gpt-load - Windows Management Script (Stability Fix)
 :: ==============================================================================
 
 :: --- 变量设置 ---
@@ -13,182 +13,218 @@ set "REPO_URL=https://github.com/tbphp/gpt-load"
 set "ENV_RAW_URL=https://raw.githubusercontent.com/LiquorXR/gpt-load-manager/main/.env.example"
 set "VERSION=v0.16"
 
-:: 检测并设置编码
+:: 设置代码页
 chcp 65001 >nul
 
-:show_main_menu
-cls
-echo.
-echo ===================================================
-echo      gpt-load Manager for Windows %VERSION%
-echo ===================================================
-echo.
-echo  [1] 启动服务 (Start Service)
-echo  [2] 配置环境 (Environment Config)
-echo  [3] 版本更新 (Update Version)
-echo  [4] 查看日志 (View Logs)
-echo  [5] 停止服务 (Stop Service)
-echo  [0] 退出脚本 (Exit)
-echo.
-echo ===================================================
-echo.
-
-set /p "menu_choice=请输入选项 [0-5]: "
-
-if "%menu_choice%"=="1" goto start_service
-if "%menu_choice%"=="2" goto config_env_menu
-if "%menu_choice%"=="3" goto update_version
-if "%menu_choice%"=="4" goto view_logs
-if "%menu_choice%"=="5" goto stop_service
-if "%menu_choice%"=="0" goto exit_script
-
-echo [错误] 无效选项
-timeout /t 2 >nul
-goto show_main_menu
-
-:start_service
-cls
-echo.
-echo [启动服务]
-echo.
-if not exist "%BINARY_PATH%" (
-    echo [错误] 未找到可执行文件。
-    set /p "confirm=是否现在下载? (y/n): "
-    if /i "!confirm!"=="y" (
-        call :do_update_version
-    ) else (
-        goto show_main_menu
-    )
-)
-call :check_env_file
+:main_loop
+:: 状态检测
 call :check_running_service
+call :check_config_status
+call :check_binary_status
+
+:: 显示主界面
+cls
+powershell -NoProfile -Command ^
+    "$host.UI.RawUI.WindowTitle = 'GPT-LOAD MANAGER';" ^
+    "Write-Host '';" ^
+    "Write-Host ' ┌──────────────────────────────────────────────────┐' -ForegroundColor Cyan;" ^
+    "Write-Host ' │           GPT-LOAD MANAGER - %VERSION%           │' -ForegroundColor Cyan;" ^
+    "Write-Host ' └──────────────────────────────────────────────────┘' -ForegroundColor Cyan;" ^
+    "Write-Host '  状态信息:' -ForegroundColor DarkGray;" ^
+    "Write-Host '  --------------------------------------------------' -ForegroundColor DarkGray;" ^
+    "Write-Host -NoNewline '  - 程序状态: '; Write-Host '%STATUS_TEXT%' -ForegroundColor %STATUS_COLOR%;" ^
+    "Write-Host -NoNewline '  - 配置文件: '; Write-Host '%CONFIG_TEXT%' -ForegroundColor %CONFIG_COLOR%;" ^
+    "Write-Host '  --------------------------------------------------' -ForegroundColor DarkGray;" ^
+    "Write-Host '  操作选项:' -ForegroundColor White;" ^
+    "Write-Host '';" ^
+    "Write-Host '  [1] 启动 / 重启服务 ' -ForegroundColor Green;" ^
+    "Write-Host '  [2] 停止当前服务    ' -ForegroundColor Red;" ^
+    "Write-Host '  [3] 检查并下载更新  ' -ForegroundColor Green;" ^
+    "Write-Host '  [4] 修改配置文件    ' -ForegroundColor Green;" ^
+    "Write-Host '  [5] 查看运行日志    ' -ForegroundColor Green;" ^
+    "Write-Host '  [6] 重置默认配置    ' -ForegroundColor DarkCyan;" ^
+    "Write-Host '';" ^
+    "Write-Host '  [0] 退出脚本        ' -ForegroundColor Gray;" ^
+    "Write-Host ' ──────────────────────────────────────────────────' -ForegroundColor DarkGray;"
+echo.
+
+set "choice="
+set /p "choice= 请输入操作代码 [0-6] : "
+
+if "%choice%"=="1" goto op_start
+if "%choice%"=="2" goto op_stop
+if "%choice%"=="3" goto op_update
+if "%choice%"=="4" goto op_edit_env
+if "%choice%"=="5" goto op_logs
+if "%choice%"=="6" goto op_reset_env
+if "%choice%"=="0" exit
+
+powershell -NoProfile -Command "Write-Host ' [错误] 无效输入，请重新选择。' -ForegroundColor Red"
+timeout /t 2 >nul
+goto main_loop
+
+:: --- 操作逻辑块 ---
+
+:op_start
+cls
+echo.
+powershell -NoProfile -Command ^
+    "$ProgressPreference = 'SilentlyContinue';" ^
+    "Write-Host ' [1/3] 正在检查环境...' -ForegroundColor Cyan;" ^
+    "if ('!BINARY_EXISTS!' -eq 'NO') { Write-Host ' [提示] 程序文件不存在，将自动下载。' -ForegroundColor Yellow };" ^
+    "if ('!CONFIG_EXISTS!' -eq 'NO') { Write-Host ' [提示] 配置文件缺失，将自动获取。' -ForegroundColor Cyan };"
+
+if "!BINARY_EXISTS!"=="NO" call :do_update_version_quiet
+if "!CONFIG_EXISTS!"=="NO" call :check_env_file_quiet
+
 if !running_count! gtr 0 (
-    echo [警告] 检测到服务已在运行。
-    set /p "confirm=是否重启服务? (y/n): "
-    if /i "!confirm!"=="y" (
-        call :stop_service_quiet
-    ) else (
-        goto show_main_menu
-    )
+    powershell -NoProfile -Command "Write-Host ' [2/3] 正在停止正在运行的服务...' -ForegroundColor Red"
+    call :stop_service_quiet
+    timeout /t 1 >nul
 )
-echo [信息] 正在启动服务...
+
+powershell -NoProfile -Command "Write-Host ' [3/3] 正在启动服务...' -ForegroundColor Green"
 if not exist "%WORK_DIR%" mkdir "%WORK_DIR%"
 pushd "%WORK_DIR%"
 start "gpt-load-service" "%BINARY_NAME%"
 popd
-echo [成功] 服务已在独立窗口启动。
-pause
-goto show_main_menu
+echo.
+powershell -NoProfile -Command "Write-Host ' [成功] 服务已在独立窗口启动。' -ForegroundColor Green"
+timeout /t 2 >nul
+goto main_loop
 
-:config_env_menu
+:op_stop
 cls
 echo.
-echo [配置环境]
-echo  [1] 检查并创建 .env
-echo  [2] 编辑 .env (记事本)
-echo  [0] 返回
+powershell -NoProfile -Command ^
+    "Write-Host ' 正在请求停止所有 gpt-load 进程...' -ForegroundColor Yellow;" ^
+    "taskkill /F /IM '%BINARY_NAME%' /T 2>$null;" ^
+    "Write-Host ' [信息] 停止指令已发送。' -ForegroundColor Gray;"
 echo.
-set /p "env_choice=请选择: "
-if "%env_choice%"=="1" (
-    call :check_env_file
+pause
+goto main_loop
+
+:op_update
+cls
+echo.
+if not exist "%WORK_DIR%" mkdir "%WORK_DIR%"
+powershell -NoProfile -Command ^
+    "$ProgressPreference = 'SilentlyContinue';" ^
+    "Write-Host ' [检查更新] 正在连接 GitHub...' -ForegroundColor Cyan;" ^
+    "$url = '%REPO_URL%/releases/latest';" ^
+    "$resp = Invoke-WebRequest -Uri $url -Method Head -MaximumRedirection 0 -ErrorAction SilentlyContinue;" ^
+    "if ($resp.Headers.Location) {" ^
+    "  $tag = ($resp.Headers.Location -split '/')[-1];" ^
+    "  Write-Host \" 正在下载版本: $tag ...\" -ForegroundColor Cyan;" ^
+    "  $dl = '%REPO_URL%/releases/download/' + $tag + '/%BINARY_NAME%';" ^
+    "  Invoke-WebRequest -Uri $dl -OutFile '%BINARY_PATH%';" ^
+    "  if (Test-Path '%BINARY_PATH%') { Write-Host \" [成功] 程序已成功更新至 $tag\" -ForegroundColor Green } else { Write-Host ' [错误] 下载失败。' -ForegroundColor Red }" ^
+    "} else {" ^
+    "  Write-Host ' [错误] 无法获取版本信息，请检查网络。' -ForegroundColor Red;" ^
+    "}"
+echo.
+pause
+goto main_loop
+
+:op_edit_env
+if exist "%WORK_DIR%\.env" (
+    notepad "%WORK_DIR%\.env"
+) else (
+    powershell -NoProfile -Command "Write-Host ' [错误] 找不到 .env 文件，请先选择 [6] 初始化。' -ForegroundColor Red"
     pause
-    goto config_env_menu
 )
-if "%env_choice%"=="2" (
-    if exist "%WORK_DIR%\.env" (
-        notepad "%WORK_DIR%\.env"
-    ) else (
-        echo [错误] .env 不存在
-        pause
-    )
-    goto config_env_menu
-)
-if "%env_choice%"=="0" goto show_main_menu
-goto config_env_menu
+goto main_loop
 
-:update_version
+:op_logs
 cls
 echo.
-echo [版本更新]
-set /p "confirm=确定检查并更新? (y/n): "
-if /i "!confirm!"=="y" (
-    call :do_update_version
-)
-pause
-goto show_main_menu
-
-:view_logs
-cls
-echo.
-echo [查看日志]
 set "LOG_FILE=%WORK_DIR%\data\logs\app.log"
-if not exist "%LOG_FILE%" (
-    echo [错误] 日志文件不存在: %LOG_FILE%
+powershell -NoProfile -Command ^
+    "Write-Host ' [运行日志 - 最近20行]' -ForegroundColor Cyan;" ^
+    "if (Test-Path '%LOG_FILE%') {" ^
+    "  Write-Host ' --------------------------------------------------' -ForegroundColor DarkGray;" ^
+    "  Get-Content '%LOG_FILE%' -Tail 20;" ^
+    "  Write-Host ' --------------------------------------------------' -ForegroundColor DarkGray;" ^
+    "} else {" ^
+    "  Write-Host ' [提示] 尚未生成任何日志文件。' -ForegroundColor Yellow;" ^
+    "}"
+echo.
+if exist "%LOG_FILE%" (
+    set /p "open_full= 是否使用记事本打开完整日志? (y/N) : "
+    if /i "!open_full!"=="y" notepad "%LOG_FILE%"
 ) else (
-    powershell -NoProfile -Command "if (Test-Path '%LOG_FILE%') { Get-Content '%LOG_FILE%' -Tail 20 } else { Write-Host '日志文件尚为空' }"
-    echo.
-    set /p "open=是否打开完整日志? (y/n): "
-    if /i "!open!"=="y" notepad "%LOG_FILE%"
+    pause
 )
-pause
-goto show_main_menu
+goto main_loop
 
-:stop_service
+:op_reset_env
 cls
 echo.
-echo [停止服务]
-call :stop_service_quiet
+powershell -NoProfile -Command "Write-Host ' [重置配置] 即将获取最新的默认配置。' -ForegroundColor Yellow"
+if exist "%WORK_DIR%\.env" (
+    set /p "confirm= 当前配置文件已存在，是否覆盖? (y/N) : "
+    if /i not "!confirm!"=="y" goto main_loop
+)
+call :check_env_file_quiet
+echo.
 pause
-goto show_main_menu
+goto main_loop
 
-:stop_service_quiet
-taskkill /F /IM "%BINARY_NAME%" >nul 2>&1
-echo [信息] 已停止相关进程。
-exit /b 0
-
-:do_update_version
-echo [信息] 正在通过重定向获取最新版本号...
-for /f "usebackq delims=" %%i in (`powershell -NoProfile -Command "$url = '%REPO_URL%/releases/latest'; $resp = Invoke-WebRequest -Uri $url -Method Head -MaximumRedirection 0 -ErrorAction SilentlyContinue; if ($resp.Headers.Location) { $tag = ($resp.Headers.Location -split '/')[-1]; $tag } else { '' }"` ) do set "LATEST_TAG=%%i"
-
-if "%LATEST_TAG%"=="" (
-    echo [错误] 无法获取最新版本号。
-    exit /b 1
-)
-
-echo [信息] 检测到最新版本: %LATEST_TAG%
-set "LATEST_URL=%REPO_URL%/releases/download/%LATEST_TAG%/%BINARY_NAME%"
-
-if not exist "%WORK_DIR%" mkdir "%WORK_DIR%"
-echo [信息] 正在下载程序文件...
-powershell -NoProfile -Command "Invoke-WebRequest -Uri '%LATEST_URL%' -OutFile '%BINARY_PATH%'"
-
-if exist "%BINARY_PATH%" (
-    echo [成功] 更新完成 (版本: %LATEST_TAG%)。
-) else (
-    echo [错误] 下载失败。
-)
-exit /b 0
-
-:check_env_file
-if exist "%WORK_DIR%\.env" (
-    echo [信息] .env 已存在。
-    exit /b 0
-)
-if not exist "%WORK_DIR%" mkdir "%WORK_DIR%"
-echo [信息] 正在从 raw 链接获取默认配置...
-powershell -NoProfile -Command "Invoke-WebRequest -Uri '%ENV_RAW_URL%' -OutFile '%WORK_DIR%\.env'"
-if exist "%WORK_DIR%\.env" (
-    echo [成功] .env 已基于 %ENV_RAW_URL% 生成。
-) else (
-    echo [错误] .env 下载失败。
-)
-exit /b 0
+:: --- 内部工具函数 ---
 
 :check_running_service
 set "running_count=0"
 for /f "usebackq" %%i in (`powershell -NoProfile -Command "(Get-Process -Name '%BINARY_NAME:.exe=%' -ErrorAction SilentlyContinue).Count"` ) do set "running_count=%%i"
 if "%running_count%"=="" set "running_count=0"
+if !running_count! gtr 0 (
+    set "STATUS_TEXT=运行中 (实例: !running_count!)"
+    set "STATUS_COLOR=Green"
+) else (
+    set "STATUS_TEXT=已停止"
+    set "STATUS_COLOR=Red"
+)
 exit /b 0
 
-:exit_script
-exit
+:check_config_status
+if exist "%WORK_DIR%\.env" (
+    set "CONFIG_EXISTS=YES"
+    set "CONFIG_TEXT=已就绪"
+    set "CONFIG_COLOR=Green"
+) else (
+    set "CONFIG_EXISTS=NO"
+    set "CONFIG_TEXT=缺失"
+    set "CONFIG_COLOR=Yellow"
+)
+exit /b 0
+
+:check_binary_status
+if exist "%BINARY_PATH%" (
+    set "BINARY_EXISTS=YES"
+) else (
+    set "BINARY_EXISTS=NO"
+)
+exit /b 0
+
+:stop_service_quiet
+taskkill /F /IM "%BINARY_NAME%" >nul 2>&1
+exit /b 0
+
+:do_update_version_quiet
+if not exist "%WORK_DIR%" mkdir "%WORK_DIR%"
+powershell -NoProfile -Command ^
+    "$ProgressPreference = 'SilentlyContinue';" ^
+    "$url = '%REPO_URL%/releases/latest';" ^
+    "$resp = Invoke-WebRequest -Uri $url -Method Head -MaximumRedirection 0 -ErrorAction SilentlyContinue;" ^
+    "if ($resp.Headers.Location) {" ^
+    "  $tag = ($resp.Headers.Location -split '/')[-1];" ^
+    "  $dl = '%REPO_URL%/releases/download/' + $tag + '/%BINARY_NAME%';" ^
+    "  Invoke-WebRequest -Uri $dl -OutFile '%BINARY_PATH%';" ^
+    "}"
+exit /b 0
+
+:check_env_file_quiet
+if not exist "%WORK_DIR%" mkdir "%WORK_DIR%"
+powershell -NoProfile -Command ^
+    "$ProgressPreference = 'SilentlyContinue';" ^
+    "Invoke-WebRequest -Uri '%ENV_RAW_URL%' -OutFile '%WORK_DIR%\.env' -ErrorAction SilentlyContinue"
+exit /b 0
