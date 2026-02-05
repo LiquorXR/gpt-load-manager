@@ -37,6 +37,10 @@ powershell -NoProfile -Command ^
     "Write-Host '  状态信息:' -ForegroundColor DarkGray;" ^
     "Write-Host '  --------------------------------------------------' -ForegroundColor DarkGray;" ^
     "Write-Host -NoNewline '  - 程序状态: '; Write-Host '%STATUS_TEXT%' -ForegroundColor %STATUS_COLOR%;" ^
+    "if ('%STATUS_TEXT%' -like '运行中*') {" ^
+    "  Write-Host -NoNewline '  - 当前版本: '; Write-Host '%RUNNING_VERSION%' -ForegroundColor Cyan;" ^
+    "  Write-Host -NoNewline '  - 监听地址: '; Write-Host '%RUNNING_ADDR%' -ForegroundColor Cyan;" ^
+    "}" ^
     "Write-Host -NoNewline '  - 配置文件: '; Write-Host '%CONFIG_TEXT%' -ForegroundColor %CONFIG_COLOR%;" ^
     "Write-Host '  --------------------------------------------------' -ForegroundColor DarkGray;" ^
     "Write-Host '';" ^
@@ -163,7 +167,7 @@ goto main_loop
 :op_logs
 cls
 echo.
-set "LOG_FILE=%WORK_DIR%\data\logs\app.log"
+set "LOG_FILE=data\logs\app.log"
 powershell -NoProfile -Command ^
     "Write-Host ' [运行日志 - 最近20行]' -ForegroundColor Cyan;" ^
     "if (Test-Path '%LOG_FILE%') {" ^
@@ -201,11 +205,20 @@ goto main_loop
 
 :check_running_service
 set "running_count=0"
+set "RUNNING_VERSION=未知"
+set "RUNNING_ADDR=未知"
 for /f "usebackq" %%i in (`powershell -NoProfile -Command "(Get-Process -Name '%BINARY_NAME:.exe=%' -ErrorAction SilentlyContinue).Count"` ) do set "running_count=%%i"
 if "%running_count%"=="" set "running_count=0"
 if !running_count! gtr 0 (
     set "STATUS_TEXT=运行中 (实例: !running_count!)"
     set "STATUS_COLOR=Green"
+    
+    :: 从日志中提取版本和地址
+    set "LOG_FILE=data\logs\app.log"
+    if exist "!LOG_FILE!" (
+        for /f "usebackq tokens=*" %%a in (`powershell -NoProfile -Command "$content = Get-Content '!LOG_FILE!' -Tail 100; $v = $content | Select-String 'started successfully on Version: (v[\d\.]+)' | Select-Object -Last 1; if($v -match 'Version: (v[\d\.]+)') { $matches[1] }"` ) do set "RUNNING_VERSION=%%a"
+        for /f "usebackq tokens=*" %%a in (`powershell -NoProfile -Command "$content = Get-Content '!LOG_FILE!' -Tail 100; $addr = $content | Select-String 'Server address: (http://[\d\.:]+)' | Select-Object -Last 1; if($addr -match 'Server address: (http://[\d\.:]+)') { $matches[1] }"` ) do set "RUNNING_ADDR=%%a"
+    )
 ) else (
     set "STATUS_TEXT=已停止"
     set "STATUS_COLOR=Red"
