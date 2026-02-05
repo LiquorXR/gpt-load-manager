@@ -31,19 +31,27 @@ ENV_RAW_URL="https://raw.githubusercontent.com/LiquorXR/gpt-load-manager/main/.e
 CERT_PATH="$PREFIX/etc/tls/cert.pem"
 
 
-# 检查证书函数
-check_cert() {
+# 检查根证书 (静默模式，仅在缺失时安装)
+check_cert_silent() {
     if [ ! -f "$CERT_PATH" ]; then
-        echo -e "${YELLOW}警告: 根证书不存在，正在安装 ca-certificates...${NC}"
+        echo -e "${YELLOW}警告: 根证书不存在，正在立即安装...${NC}"
         pkg install ca-certificates -y
         if [ $? -eq 0 ]; then
             echo -e "${GREEN}根证书安装成功。${NC}"
         else
-            echo -e "${RED}根证书安装失败，请检查网络或手动安装。${NC}"
+            echo -e "${RED}根证书安装失败。${NC}"
+            return 1
         fi
+    fi
+}
+
+# 手动管理证书 (供菜单调用)
+manage_cert() {
+    if [ ! -f "$CERT_PATH" ]; then
+        check_cert_silent
     else
         echo -e "${GREEN}根证书已存在。${NC}"
-        read -p "是否需要更新根证书 (ca-certificates)? (y/n): " confirm_update < /dev/tty
+        read -p "是否需要更新根证书 (ca-certificates)? (y/N): " confirm_update < /dev/tty
         if [[ "$confirm_update" == [yY] ]]; then
             echo -e "${BLUE}正在更新 ca-certificates...${NC}"
             pkg install ca-certificates -y
@@ -65,7 +73,7 @@ config_env_menu() {
         echo -e "  ${BOLD}[0]${NC} 返回主菜单"
         read -p "请选择 [0-2]: " env_choice < /dev/tty
         case $env_choice in
-            1) check_cert ;;
+            1) manage_cert ;;
             2)
                 read -p "是否确定要执行系统软件包更新? (y/n): " confirm_pkg < /dev/tty
                 if [[ "$confirm_pkg" == [yY] ]]; then
@@ -158,7 +166,7 @@ start_service() {
         fi
     fi
     
-    check_cert
+    check_cert_silent
     if [ ! -f "$CERT_PATH" ]; then
         echo -e "${RED}启动失败: 证书缺失。${NC}"
         return 1
