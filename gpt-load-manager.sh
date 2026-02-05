@@ -181,7 +181,7 @@ show_main_menu() {
     echo -e "${GREEN}  ╚██████╔╝██║        ██║         ███████╗╚██████╔╝██║  ██║██████╔╝${NC}"
     echo -e "${GREEN}   ╚═════╝ ╚═╝        ╚═╝         ╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚═════╝ ${NC}"
     echo -e "${BLUE}=========================================================${NC}"
-    echo -e "           ${BOLD}gpt-load Manager for Termux v0.16${NC}"
+    echo -e "           ${BOLD}gpt-load Manager for Termux v1.16${NC}"
     echo -e "${BLUE}=========================================================${NC}"
     echo -e "  ${BOLD}[1]${NC} ${GREEN}启动服务${NC}  --- 启动 gpt-load 代理服务"
     echo -e "  ${BOLD}[2]${NC} ${BLUE}配置环境${NC}  --- 检查证书和系统更新"
