@@ -1,61 +1,63 @@
 # GPT-Load Manager
 
-`GPT-Load Manager` 是一个跨平台的自动化管理脚本工具，专门用于部署、管理和更新 [gpt-load](https://github.com/tbphp/gpt-load) 代理服务。它支持 Windows 环境以及 Android 上的 Termux 环境。
+[中文版](./README_CN.md)
 
-## 🚀 核心功能
+`GPT-Load Manager` is a cross-platform automation script toolkit designed to deploy, manage, and update the [gpt-load](https://github.com/tbphp/gpt-load) proxy service. It supports both Windows environments and Termux on Android.
 
-- **自动化部署**：自动从 GitHub 下载最新版本的 `gpt-load` 可执行文件。
-- **环境配置**：
-  - **Windows**: 自动检查后台服务状态、监听地址和版本信息。
-  - **Termux**: 自动管理根证书（CA-Certificates）以确保网络请求安全。
-- **配置管理**：一键获取 `.env` 配置文件模板，支持快捷编辑和重置。
-- **服务控制**：支持一键启动、停止和后台运行代理服务。
-- **版本维护**：自动检测并下载 GitHub 上的最新 Release 版本。
-- **日志查看**：集成日志查看功能，方便调试和监控运行状态。
+## 🚀 Key Features
 
-## 📂 项目结构
+- **Automated Deployment**: Automatically downloads the latest version of the `gpt-load` executable from GitHub.
+- **Environment Configuration**:
+  - **Windows**: Automatically checks background service status, listening addresses, and version information.
+  - **Termux**: Manages root certificates (CA-Certificates) to ensure secure network requests.
+- **Configuration Management**: One-click acquisition of `.env` configuration templates, with support for quick editing and resetting.
+- **Service Control**: Simple commands to start, stop, and run the proxy service in the background.
+- **Version Maintenance**: Detects and downloads the latest release from GitHub automatically.
+- **Log Viewing**: Integrated log viewing functionality for easy debugging and monitoring.
+
+## 📂 Project Structure
 
 ```text
 gpt-load-manager/
-├── gpt-load-manager.bat    # Windows 环境管理脚本 (PowerShell 驱动)
-├── gpt-load-manager.sh     # Termux 环境管理脚本 (Bash 驱动)
-├── .env.example            # 配置文件模板
-├── .gitignore              # Git 忽略配置
-└── gpt-load/               # (运行后生成) 存放核心程序与配置的目录
+├── gpt-load-manager.bat    # Windows management script (PowerShell driven)
+├── gpt-load-manager.sh     # Termux management script (Bash driven)
+├── .env.example            # Configuration template
+├── .gitignore              # Git ignore configuration
+└── gpt-load/               # (Generated at runtime) Directory for core program and config
 ```
 
-## 🛠️ 安装与使用
+## 🛠️ Installation & Usage
 
-### 1. Windows 环境
+### 1. Windows Environment
 
-1. 下载项目到本地。
-2. 双击运行 `gpt-load-manager.bat`。
-3. 按照菜单提示选择：
-   - `[1]` 启动服务（首次运行会自动下载程序和配置）。
-   - `[4]` 修改配置文件，填入你的代理参数。
+1. Download the project to your local machine.
+2. Double-click `gpt-load-manager.bat` to run.
+3. Follow the menu prompts:
+   - `[1]` Start Service (The script will auto-download the binary and config on first run).
+   - `[4]` Edit Configuration to input your proxy parameters.
 
-### 2. Android (Termux) 环境
+### 2. Android (Termux) Environment
 
-1. 在 Termux 中克隆或下载脚本。
-2. 授予执行权限：
+1. Clone or download the script in Termux.
+2. Grant execution permissions:
    ```bash
    chmod +x gpt-load-manager.sh
    ```
-3. 运行脚本：
+3. Run the script:
    ```bash
    ./gpt-load-manager.sh
    ```
-4. 在菜单中选择 `[1]` 启动服务。脚本会自动处理证书和二进制文件的下载。
+4. Select `[1]` from the menu to start the service. The script handles certificate and binary downloads automatically.
 
-## ⚙️ 配置说明
+## ⚙️ Configuration
 
-程序运行依赖于 `.env` 文件。首次启动时，脚本会自动从 GitHub 获取最新的 `.env.example`。
+The application relies on a `.env` file. Upon the first startup, the script will automatically fetch the latest `.env.example` from GitHub.
 
-主要配置项通常包括：
-- 代理监听端口
-- 上游 GPT 接口地址
-- 认证信息等
+Key configuration items typically include:
+- Proxy listening port
+- Upstream GPT API address
+- Authentication credentials, etc.
 
-## 📜 许可证
+## 📜 License
 
-本项目基于 MIT 许可证开源。
+This project is open-sourced under the MIT License.
