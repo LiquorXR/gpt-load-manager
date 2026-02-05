@@ -1,5 +1,6 @@
 # 排除data文件夹
 data/
+gpt-load/
 
 # 排除.env文件
 .env
