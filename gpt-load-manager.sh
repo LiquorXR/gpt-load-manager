@@ -26,8 +26,8 @@ setup_colors() {
 WORK_DIR="gpt-load"
 BINARY_NAME="gpt-load-linux-arm64"
 BINARY_PATH="${WORK_DIR}/${BINARY_NAME}"
-REPO_API="https://api.github.com/repos/tbphp/gpt-load/releases/latest"
-ENV_REPO_API="https://api.github.com/repos/LiquorXR/gpt-load-manager/contents/.env.example"
+REPO_URL="https://github.com/tbphp/gpt-load"
+ENV_RAW_URL="https://raw.githubusercontent.com/LiquorXR/gpt-load-manager/main/.env.example"
 CERT_PATH="$PREFIX/etc/tls/cert.pem"
 
 
@@ -84,21 +84,18 @@ do_update_version() {
     # 创建工作目录
     mkdir -p "$WORK_DIR"
     
-    echo -e "${BLUE}正在检查最新版本信息...${NC}"
+    echo -e "${BLUE}正在检查最新版本号...${NC}"
     
-    # 检查是否安装了 jq
-    if ! command -v jq &> /dev/null; then
-        echo -e "${YELLOW}需要安装 jq 来解析版本信息，正在尝试安装...${NC}"
-        pkg install jq -y
-    fi
+    # 利用 GitHub releases/latest 的重定向机制获取 Tag
+    LATEST_TAG=$(curl -Ls -o /dev/null -w %{url_effective} "${REPO_URL}/releases/latest" | rev | cut -d/ -f1 | rev)
 
-    # 获取最新的下载链接
-    LATEST_URL=$(curl -s "$REPO_API" | jq -r ".assets[] | select(.name == \"$BINARY_NAME\") | .browser_download_url")
-
-    if [ -z "$LATEST_URL" ] || [ "$LATEST_URL" == "null" ]; then
-        echo -e "${RED}错误: 无法获取下载链接，可能是 API 限制或网络问题。${NC}"
+    if [ -z "$LATEST_TAG" ] || [ "$LATEST_TAG" == "latest" ]; then
+        echo -e "${RED}错误: 无法获取最新版本号，请检查网络。${NC}"
         return 1
     fi
+
+    echo -e "${GREEN}检测到最新版本: ${LATEST_TAG}${NC}"
+    LATEST_URL="${REPO_URL}/releases/download/${LATEST_TAG}/${BINARY_NAME}"
 
     echo -e "${BLUE}正在下载: $LATEST_URL${NC}"
     curl -L -o "${BINARY_PATH}" "$LATEST_URL"
@@ -124,23 +121,9 @@ update_version() {
 # 检查/下载 .env 配置文件函数
 check_env_file() {
     if [ ! -f "$WORK_DIR/.env" ]; then
-        echo -e "${YELLOW}未发现 .env 配置文件，正在从 GitHub API 获取...${NC}"
+        echo -e "${YELLOW}未发现 .env 配置文件，正在从 GitHub 获取...${NC}"
         
-        # 检查是否安装了 jq
-        if ! command -v jq &> /dev/null; then
-            echo -e "${YELLOW}需要安装 jq 来解析 API 响应，正在尝试安装...${NC}"
-            pkg install jq -y
-        fi
-
-        # 通过 GitHub API 获取文件下载链接
-        ENV_DOWNLOAD_URL=$(curl -s "$ENV_REPO_API" | jq -r ".download_url")
-
-        if [ -z "$ENV_DOWNLOAD_URL" ] || [ "$ENV_DOWNLOAD_URL" == "null" ]; then
-            echo -e "${RED}无法获取 .env.example 下载链接，可能是 API 限制或网络问题。${NC}"
-            return 1
-        fi
-
-        curl -s "$ENV_DOWNLOAD_URL" -o "$WORK_DIR/.env"
+        curl -sL "$ENV_RAW_URL" -o "$WORK_DIR/.env"
         
         if [ $? -eq 0 ] && [ -f "$WORK_DIR/.env" ]; then
             echo -e "${GREEN}.env 配置文件已下载成功！${NC}"
