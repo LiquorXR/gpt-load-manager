@@ -88,11 +88,9 @@ if !running_count! gtr 0 (
 
 powershell -NoProfile -Command "Write-Host ' [3/3] 正在启动服务...' -ForegroundColor Green"
 if not exist "%WORK_DIR%" mkdir "%WORK_DIR%"
-pushd "%WORK_DIR%"
-start "gpt-load-service" "%BINARY_NAME%"
-popd
+powershell -NoProfile -Command "Start-Process '%BINARY_PATH%' -WindowStyle Hidden"
 echo.
-powershell -NoProfile -Command "Write-Host ' [成功] 服务已在独立窗口启动。' -ForegroundColor Green"
+powershell -NoProfile -Command "Write-Host ' [成功] 服务已在后台启动。' -ForegroundColor Green"
 timeout /t 2 >nul
 goto main_loop
 
