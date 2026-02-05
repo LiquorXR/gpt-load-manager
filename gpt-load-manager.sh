@@ -42,6 +42,8 @@ check_cert_silent() {
             echo -e "${RED}根证书安装失败。${NC}"
             return 1
         fi
+    else
+        echo -e "${GREEN}根证书已就绪。${NC}"
     fi
 }
 
