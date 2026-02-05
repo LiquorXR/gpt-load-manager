@@ -179,7 +179,7 @@ powershell -NoProfile -Command ^
     "}"
 echo.
 if exist "%LOG_FILE%" (
-    set /p "open_full= 是否使用记事本打开完整日志? (y/N) : "
+    set /p "open_full= 是否使用记事本打开完整日志? (y/n) : "
     if /i "!open_full!"=="y" notepad "%LOG_FILE%"
 ) else (
     echo 按任意键继续...
@@ -192,7 +192,7 @@ cls
 echo.
 powershell -NoProfile -Command "Write-Host ' [重置配置] 即将获取最新的默认配置。' -ForegroundColor Yellow"
 if exist "%WORK_DIR%\.env" (
-    set /p "confirm= 当前配置文件已存在，是否覆盖? (y/N) : "
+    set /p "confirm= 当前配置文件已存在，是否覆盖? (y/n) : "
     if /i not "!confirm!"=="y" goto main_loop
 )
 call :check_env_file_quiet

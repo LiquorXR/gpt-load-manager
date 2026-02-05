@@ -34,15 +34,25 @@ CERT_PATH="$PREFIX/etc/tls/cert.pem"
 # 检查证书函数
 check_cert() {
     if [ ! -f "$CERT_PATH" ]; then
-        echo -e "${RED}错误: 根证书不存在 ($CERT_PATH)${NC}"
-        read -p "是否自动安装 ca-certificates? (y/n): " confirm
-        if [[ "$confirm" == [yY] ]]; then
-            pkg install ca-certificates -y
+        echo -e "${YELLOW}警告: 根证书不存在，正在安装 ca-certificates...${NC}"
+        pkg install ca-certificates -y
+        if [ $? -eq 0 ]; then
+            echo -e "${GREEN}根证书安装成功。${NC}"
         else
-            echo -e "${YELLOW}请手动安装证书后重试。${NC}"
+            echo -e "${RED}根证书安装失败，请检查网络或手动安装。${NC}"
         fi
     else
-        echo -e "${GREEN}根证书已就绪。${NC}"
+        echo -e "${GREEN}根证书已存在。${NC}"
+        read -p "是否需要更新根证书 (ca-certificates)? (y/n): " confirm_update < /dev/tty
+        if [[ "$confirm_update" == [yY] ]]; then
+            echo -e "${BLUE}正在更新 ca-certificates...${NC}"
+            pkg install ca-certificates -y
+            if [ $? -eq 0 ]; then
+                echo -e "${GREEN}根证书更新成功。${NC}"
+            else
+                echo -e "${RED}根证书更新失败。${NC}"
+            fi
+        fi
     fi
 }
 
@@ -57,7 +67,7 @@ config_env_menu() {
         case $env_choice in
             1) check_cert ;;
             2)
-                read -p "是否确定要执行系统软件包更新? (y/N): " confirm_pkg < /dev/tty
+                read -p "是否确定要执行系统软件包更新? (y/n): " confirm_pkg < /dev/tty
                 if [[ "$confirm_pkg" == [yY] ]]; then
                     echo -e "${BLUE}正在更新系统软件包...${NC}" && pkg update && pkg upgrade -y
                 else
@@ -110,7 +120,7 @@ do_update_version() {
 
 # 版本更新函数 (带确认)
 update_version() {
-    read -p "是否确定要检查并下载最新应用版本? (y/N): " confirm_update < /dev/tty
+    read -p "是否确定要检查并下载最新应用版本? (y/n): " confirm_update < /dev/tty
     if [[ "$confirm_update" == [yY] ]]; then
         do_update_version
     else
@@ -121,7 +131,7 @@ update_version() {
 # 检查/下载 .env 配置文件函数
 check_env_file() {
     if [ ! -f "$WORK_DIR/.env" ]; then
-        echo -e "${YELLOW}未发现 .env 配置文件，正在从 GitHub 获取...${NC}"
+        echo -e "${YELLOW}未发现 .env 配置文件，正在立即获取...${NC}"
         
         curl -sL "$ENV_RAW_URL" -o "$WORK_DIR/.env"
         
@@ -140,12 +150,10 @@ check_env_file() {
 # 启动服务函数
 start_service() {
     if [ ! -f "${BINARY_PATH}" ]; then
-        echo -e "${RED}错误: 未找到 '${BINARY_PATH}' 可执行文件。${NC}"
-        read -p "是否立即下载最新版本? (Y/n): " confirm < /dev/tty
-        if [[ "$confirm" == "y" || "$confirm" == "Y" || "$confirm" == "" ]]; then
-            do_update_version
-        else
-            echo -e "${YELLOW}用户取消操作，返回主菜单。${NC}"
+        echo -e "${YELLOW}未找到 '${BINARY_PATH}' 可执行文件，正在立即下载...${NC}"
+        do_update_version
+        if [ $? -ne 0 ]; then
+            echo -e "${RED}启动失败: 无法获取可执行文件。${NC}"
             return 1
         fi
     fi
