@@ -51,7 +51,7 @@ manage_cert() {
         check_cert_silent
     else
         echo -e "${GREEN}根证书已存在。${NC}"
-        read -p "是否需要更新根证书 (ca-certificates)? (y/N): " confirm_update < /dev/tty
+        read -p "是否需要更新根证书 (ca-certificates)? (y/n): " confirm_update < /dev/tty
         if [[ "$confirm_update" == [yY] ]]; then
             echo -e "${BLUE}正在更新 ca-certificates...${NC}"
             pkg install ca-certificates -y
