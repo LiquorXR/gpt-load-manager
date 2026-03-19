@@ -92,7 +92,9 @@ if !running_count! gtr 0 (
 
 powershell -NoProfile -Command "Write-Host ' [3/3] 正在启动服务...' -ForegroundColor Green"
 if not exist "%WORK_DIR%" mkdir "%WORK_DIR%"
-powershell -NoProfile -Command "Start-Process '%BINARY_PATH%' -WindowStyle Hidden"
+cd "%WORK_DIR%"
+powershell -NoProfile -Command "Start-Process '%BINARY_NAME%' -WindowStyle Hidden"
+cd ..
 echo.
 powershell -NoProfile -Command "Write-Host ' [成功] 服务已在后台启动。' -ForegroundColor Green"
 timeout /t 2 >nul
@@ -167,7 +169,7 @@ goto main_loop
 :op_logs
 cls
 echo.
-set "LOG_FILE=data\logs\app.log"
+set "LOG_FILE=%WORK_DIR%\data\logs\app.log"
 powershell -NoProfile -Command ^
     "Write-Host ' [运行日志 - 最近20行]' -ForegroundColor Cyan;" ^
     "if (Test-Path '%LOG_FILE%') {" ^
@@ -213,8 +215,8 @@ if !running_count! gtr 0 (
     set "STATUS_TEXT=运行中 (实例: !running_count!)"
     set "STATUS_COLOR=Green"
     
-    :: 从日志中提取版本和地址
-    set "LOG_FILE=data\logs\app.log"
+    :: 从日志中提取版本 and 地址
+    set "LOG_FILE=%WORK_DIR%\data\logs\app.log"
     if exist "!LOG_FILE!" (
         for /f "usebackq tokens=*" %%a in (`powershell -NoProfile -Command "$content = Get-Content '!LOG_FILE!' -Tail 100; $v = $content | Select-String 'started successfully on Version: (v[\d\.]+)' | Select-Object -Last 1; if($v -match 'Version: (v[\d\.]+)') { $matches[1] }"` ) do set "RUNNING_VERSION=%%a"
         for /f "usebackq tokens=*" %%a in (`powershell -NoProfile -Command "$content = Get-Content '!LOG_FILE!' -Tail 100; $addr = $content | Select-String 'Server address: (http://[\d\.:]+)' | Select-Object -Last 1; if($addr -match 'Server address: (http://[\d\.:]+)') { $matches[1] }"` ) do set "RUNNING_ADDR=%%a"
